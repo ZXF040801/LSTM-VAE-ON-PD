@@ -28,10 +28,7 @@ class Config:
 
     # 只保留这些评分的样本
     VALID_SCORES = [0, 1]
-    git
-    push - u
-    origin
-    main  # 分支名替换为你的实际分支（如 master）
+
     # 信号处理参数
     SAMPLING_RATE = 60  # Hz
     TARGET_LENGTH = 360  # 目标序列长度 (6秒 * 60Hz)

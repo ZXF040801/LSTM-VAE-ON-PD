@@ -240,6 +240,25 @@ class ConditionalLSTMVAE(nn.Module):
         # 生成时不传入 target_seq，teacher_forcing_ratio 自动无效
         return self.decoder(z_cond, target_seq=None)
 
+    def encode(self, x, labels=None):
+        """
+        只进行编码，返回潜在向量
+        用于可视化潜在空间等场景
+        """
+        # 如果没有提供labels，使用全0标签
+        if labels is None:
+            labels = torch.zeros(x.size(0), dtype=torch.long, device=x.device)
+
+        class_emb = self.class_embedding(labels)
+        class_emb_seq = class_emb.unsqueeze(1).repeat(1, x.size(1), 1)
+        x_cond = torch.cat([x, class_emb_seq], dim=2)
+
+        mu, logvar = self.encoder(x_cond)
+        z = self.reparameterize(mu, logvar)
+
+        return z, mu, logvar
+
+
 # ============================================================================
 # 3. 损失函数
 # ============================================================================
@@ -631,7 +650,7 @@ def plot_latent_space(model, X, y, device='cpu', save_path=None):
     # 绘图
     plt.figure(figsize=(10, 8))
     scatter = plt.scatter(z_2d[:, 0], z_2d[:, 1], c=y, cmap='coolwarm', alpha=0.6)
-    plt.colorbar(scatter, label='Class (0=Non-PD, 1=PD)')
+    plt.colorbar(scatter, label='Class (0=UPDRS 0, 1=UPDRS 1)')
     plt.xlabel('t-SNE Dimension 1')
     plt.ylabel('t-SNE Dimension 2')
     plt.title('Latent Space Visualization (t-SNE)')
@@ -642,7 +661,5 @@ def plot_latent_space(model, X, y, device='cpu', save_path=None):
     plt.show()
 
 
-
 if __name__ == "__main__":
     print()
-
