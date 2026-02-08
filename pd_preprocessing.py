@@ -204,23 +204,21 @@ def process_sequence(file_path, config):
         except:
             filtered[:, i] = combined[:, i]
 
-    # 4. Z-score标准化 (按通道)
-    mean = np.mean(filtered, axis=0, keepdims=True)
-    std = np.std(filtered, axis=0, keepdims=True)
-    std[std < 1e-8] = 1
-    normalized = (filtered - mean) / std
+    # 4. 不再做逐样本z-score！全局标准化在所有数据加载完后统一做
+    # 原因：逐样本z-score导致所有样本均值≈0、方差≈1，
+    # 模型输出全0就能获得MSE≈1.0，永远学不到真实模式
 
     # 5. 重采样到目标长度
-    current_len = len(normalized)
+    current_len = len(filtered)
     if current_len == config.TARGET_LENGTH:
-        return normalized
+        return filtered
 
     x_old = np.linspace(0, 1, current_len)
     x_new = np.linspace(0, 1, config.TARGET_LENGTH)
 
-    resampled = np.zeros((config.TARGET_LENGTH, normalized.shape[1]))
-    for i in range(normalized.shape[1]):
-        f = interp1d(x_old, normalized[:, i], kind='linear', fill_value='extrapolate')
+    resampled = np.zeros((config.TARGET_LENGTH, filtered.shape[1]))
+    for i in range(filtered.shape[1]):
+        f = interp1d(x_old, filtered[:, i], kind='linear', fill_value='extrapolate')
         resampled[:, i] = f(x_new)
 
     return resampled
@@ -401,7 +399,7 @@ def preprocess_data(config=None):
 
     # 打印统计
     print("\n" + "=" * 60)
-    print("                    数据集统计")
+    print("                    数据集统计 (标准化前)")
     print("=" * 60)
 
     for name, X, y in [('训练集', train_X, train_y),
@@ -412,8 +410,26 @@ def preprocess_data(config=None):
             print(f"  形状: {X.shape}")
             print(f"  UPDRS 0分: {(y == 0).sum()}, UPDRS 1分: {(y == 1).sum()}")
             print(f"  1分比例: {np.mean(y):.1%}")
+            print(f"  数据范围: [{X.min():.4f}, {X.max():.4f}]")
         else:
             print(f"\n{name}: 空")
+
+    # ====== 全局标准化：用训练集的统计量标准化所有数据 ======
+    print("\n[步骤5.5] 全局标准化...")
+    if len(train_X) > 0:
+        global_mean = train_X.mean(axis=(0, 1), keepdims=True)  # (1, 1, 12)
+        global_std = train_X.std(axis=(0, 1), keepdims=True)
+        global_std[global_std < 1e-8] = 1.0
+
+        train_X = ((train_X - global_mean) / global_std).astype(np.float32)
+        if len(val_X) > 0:
+            val_X = ((val_X - global_mean) / global_std).astype(np.float32)
+        if len(test_X) > 0:
+            test_X = ((test_X - global_mean) / global_std).astype(np.float32)
+
+        print(f"  全局均值: {global_mean.squeeze()}")
+        print(f"  全局标准差: {global_std.squeeze()}")
+        print(f"  标准化后训练数据范围: [{train_X.min():.2f}, {train_X.max():.2f}]")
 
     # 步骤6: 保存数据
     print("\n[步骤6] 保存数据...")
@@ -471,6 +487,11 @@ def preprocess_data(config=None):
         print(f"    - val_data.npz")
         print(f"    - test_data.npz")
         print(f"    - metadata.json")
+        print(f"    - normalization_params.npz")
+
+        # 保存标准化参数（生成合成数据后反标准化需要用到）
+        np.savez(os.path.join(config.OUTPUT_FOLDER, 'normalization_params.npz'),
+                 mean=global_mean.squeeze(), std=global_std.squeeze())
     else:
         print("  警告: 没有成功处理任何数据!")
 
