@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dir \"D:\\\\Final data\" /b)"
+      "Bash(dir \"D:\\\\Final data\" /b)",
+      "Bash(python -c \":*)",
+      "Bash(python \"D:/Final data/run_analysis.py\")",
+      "Bash(cmd /c \"python D:\\\\Final data\\\\All-Ruijin-labels_analysis.py\")",
+      "Bash(python -c \"import pandas as pd; df = pd.read_excel\\(''D:/Final data/All-Ruijin-labels.xlsx''\\); print\\(''Columns:'', df.columns.tolist\\(\\)\\); print\\(''\\\\nFirst 10 rows:''\\); print\\(df.head\\(10\\).to_string\\(\\)\\); print\\(''\\\\nShape:'', df.shape\\); mask = df[''FT Clinical UPDRS Score''].isin\\([0, 1]\\); filtered = df[mask]; print\\(f''\\\\nUPDRS 0 or 1 count: {len\\(filtered\\)}''\\); print\\(''\\\\nUPDRS value counts:''\\); print\\(filtered[''FT Clinical UPDRS Score''].value_counts\\(\\)\\); print\\(''\\\\nSearching for filename-related columns:''\\); [print\\(f\"\"Column: {col}\"\", filtered[col].head\\(20\\).tolist\\(\\)\\) for col in df.columns if any\\(k in col.lower\\(\\) for k in [''file'',''name'',''data'']\\)]\")",
+      "Bash(python \"D:/Final data/analyze_updrs.py\")"
     ]
   }
 }
